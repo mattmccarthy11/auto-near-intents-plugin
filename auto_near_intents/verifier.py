@@ -27,6 +27,7 @@ SCHEMA_FILES = {
     "quote_request": "near-quote-request.schema.json",
     "status_refund_receipt": "mock-near-status-refund-receipt.schema.json",
     "settlement": "mock-near-settlement.schema.json",
+    "proof_ledger_row": "proof-ledger-row.schema.json",
     "proof_link": "intent-proof-link.schema.json",
     "export_policy": "public-export-policy.schema.json",
 }
@@ -354,6 +355,140 @@ def build_phase1_artifacts(root: Path) -> dict[str, Any]:
     }
 
 
+def validate_proof_ledger_row(proof_ledger_row: dict[str, Any]) -> list[str]:
+    issues: list[str] = []
+    if proof_ledger_row.get("schema") != "auto-proof-ledger-row/v1":
+        issues.append("schema must be auto-proof-ledger-row/v1")
+    for key in ("proof_ledger_row_id", "run_id", "artifact_sha256"):
+        if not proof_ledger_row.get(key):
+            issues.append(f"{key} is required")
+    artifact_sha = proof_ledger_row.get("artifact_sha256")
+    if not isinstance(artifact_sha, str) or re.fullmatch(r"[0-9a-f]{64}", artifact_sha) is None:
+        issues.append("artifact_sha256 must be a 64-char lowercase hex digest")
+    cost = proof_ledger_row.get("cost", {})
+    if not isinstance(cost, dict):
+        issues.append("cost must be an object")
+        cost = {}
+    if cost.get("mode") not in {"dry_run", "dry-run", "mock", "planned"}:
+        issues.append("cost.mode must be dry/no-spend")
+    if float(cost.get("observed_live_spend_usdc", 0) or 0) != 0:
+        issues.append("observed_live_spend_usdc must be 0")
+    if proof_ledger_row.get("spendful", False) is not False:
+        issues.append("spendful must be false when present")
+    if proof_ledger_row.get("live_near_transaction", False) is not False:
+        issues.append("live_near_transaction must be false when present")
+    return issues
+
+
+def build_intent_proof_link(
+    intent: dict[str, Any],
+    settlement: dict[str, Any],
+    quote_request: dict[str, Any],
+    status_refund_receipt: dict[str, Any],
+    proof_ledger_row: dict[str, Any],
+) -> dict[str, Any]:
+    result = proof_ledger_row.get("result", {})
+    if not isinstance(result, dict):
+        result = {}
+    return {
+        "schema": "auto-intent-proof-link/v1",
+        "intent_id": intent.get("intent_id"),
+        "settlement_id": settlement.get("settlement_id"),
+        "quote_request_id": quote_request.get("quote_request_id"),
+        "status_refund_receipt_id": status_refund_receipt.get("status_refund_receipt_id"),
+        "proof_ledger_row_id": proof_ledger_row.get("proof_ledger_row_id"),
+        "run_id": proof_ledger_row.get("run_id"),
+        "artifact_sha256": proof_ledger_row.get("artifact_sha256"),
+        "proof_verification": {
+            "required_before_final_payout": True,
+            "status": result.get("verification_status", "pending_mock_verification"),
+        },
+    }
+
+
+def update_public_artifacts_from_proof_link(
+    dashboard: dict[str, Any],
+    redacted_proof: dict[str, Any],
+    proof_link: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    verification = proof_link.get("proof_verification", {})
+    if not isinstance(verification, dict):
+        verification = {}
+    status = verification.get("status")
+    section = dashboard.setdefault("near_confidential_research_intent", {})
+    if not isinstance(section, dict):
+        section = {}
+        dashboard["near_confidential_research_intent"] = section
+    proof_status = section.setdefault("proof_status", {})
+    if not isinstance(proof_status, dict):
+        proof_status = {}
+        section["proof_status"] = proof_status
+    proof_status.update(
+        {
+            "artifact_sha256": proof_link.get("artifact_sha256"),
+            "proof_ledger_row_id": proof_link.get("proof_ledger_row_id"),
+            "run_id": proof_link.get("run_id"),
+            "status": status,
+        }
+    )
+    proof = redacted_proof.setdefault("proof", {})
+    if not isinstance(proof, dict):
+        proof = {}
+        redacted_proof["proof"] = proof
+    proof.update(
+        {
+            "artifact_sha256": proof_link.get("artifact_sha256"),
+            "proof_ledger_row_id": proof_link.get("proof_ledger_row_id"),
+            "run_id": proof_link.get("run_id"),
+            "status": status,
+        }
+    )
+    return dashboard, redacted_proof
+
+
+def ingest_proof_ledger_row(root: Path, proof_row_path: Path) -> dict[str, Any]:
+    root = root.expanduser().resolve()
+    proof_row_path = proof_row_path.expanduser().resolve()
+    proof_ledger_row = load_json(proof_row_path)
+    issues = validate_proof_ledger_row(proof_ledger_row)
+    if issues:
+        raise ValueError("invalid proof ledger row: " + "; ".join(issues))
+    demo = load_demo(root)
+    intent = demo["intent"]
+    settlement = demo["settlement"]
+    quote_request = demo["quote_request"]
+    status_refund_receipt = demo["status_refund_receipt"]
+    proof_link = build_intent_proof_link(intent, settlement, quote_request, status_refund_receipt, proof_ledger_row)
+    dashboard, redacted_proof = update_public_artifacts_from_proof_link(
+        demo["dashboard"], demo["redacted_proof"], proof_link
+    )
+    write_json(root / REQUIRED_FILES["proof_ledger_row"], proof_ledger_row)
+    write_json(root / REQUIRED_FILES["proof_link"], proof_link)
+    write_json(root / REQUIRED_FILES["dashboard"], dashboard)
+    write_json(root / REQUIRED_FILES["redacted_proof"], redacted_proof)
+    return {
+        "schema": "auto-near-intents-proof-ledger-ingest/v1",
+        "ok": True,
+        "spendful": False,
+        "live_near_transaction": False,
+        "root": str(root),
+        "input": str(proof_row_path),
+        "wrote": [
+            str(root / REQUIRED_FILES["proof_ledger_row"]),
+            str(root / REQUIRED_FILES["proof_link"]),
+            str(root / REQUIRED_FILES["dashboard"]),
+            str(root / REQUIRED_FILES["redacted_proof"]),
+        ],
+        "intent_id": proof_link.get("intent_id"),
+        "settlement_id": proof_link.get("settlement_id"),
+        "quote_request_id": proof_link.get("quote_request_id"),
+        "status_refund_receipt_id": proof_link.get("status_refund_receipt_id"),
+        "proof_ledger_row_id": proof_link.get("proof_ledger_row_id"),
+        "run_id": proof_link.get("run_id"),
+        "artifact_sha256": proof_link.get("artifact_sha256"),
+    }
+
+
 def verify_demo(root: Path) -> dict[str, Any]:
     root = root.expanduser().resolve()
     demo = load_demo(root)
@@ -553,6 +688,18 @@ def verify_demo(root: Path) -> dict[str, Any]:
             "intent-proof-link.json must bind settlement to the AUTO proof ledger row",
         ),
         check(
+            "auto_proof_ledger_row_is_no_spend_and_public_safe",
+            not validate_proof_ledger_row(proof_ledger_row),
+            {
+                "proof_ledger_row_id": proof_row_id,
+                "run_id": proof_run_id,
+                "artifact_sha256": artifact_hash,
+                "cost": proof_ledger_row.get("cost", {}),
+                "source": proof_ledger_row.get("source", {}),
+            },
+            "proof-ledger-row.json must be a public-safe no-spend AUTO proof ledger row",
+        ),
+        check(
             "dashboard_has_settlement_refund_confidentiality_proof_status",
             dashboard.get("schema") == "auto-near-intents-public-dashboard/v1"
             and {"settlement", "refund", "confidentiality", "proof_status"}.issubset(dashboard_sections),
@@ -681,6 +828,9 @@ def main(argv: list[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command")
     build = subparsers.add_parser("build-phase1", help="write Phase 1 1Click dry quote/status artifacts")
     build.add_argument("root", nargs="?", default="examples", type=Path)
+    ingest = subparsers.add_parser("ingest-proof-ledger-row", help="ingest an AUTO proof-ledger row into the dry NEAR package")
+    ingest.add_argument("proof_row", type=Path)
+    ingest.add_argument("root", nargs="?", default="examples", type=Path)
     verify = subparsers.add_parser("verify", help="verify demo artifacts")
     verify.add_argument("root", nargs="?", default="examples", type=Path)
     audit = subparsers.add_parser("audit-publication", help="scan repo for public-publication risk patterns")
@@ -689,6 +839,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "build-phase1":
         try:
             payload = build_phase1_artifacts(args.root)
+        except ValueError as exc:
+            print(json.dumps({"ok": False, "error": str(exc)}, indent=2, sort_keys=True), file=sys.stderr)
+            return 1
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    if args.command == "ingest-proof-ledger-row":
+        try:
+            payload = ingest_proof_ledger_row(args.root, args.proof_row)
         except ValueError as exc:
             print(json.dumps({"ok": False, "error": str(exc)}, indent=2, sort_keys=True), file=sys.stderr)
             return 1

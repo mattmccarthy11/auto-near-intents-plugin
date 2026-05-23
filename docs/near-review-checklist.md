@@ -15,14 +15,21 @@ This repo is a no-spend partner review package. It does not call NEAR, sign payl
 ## Local Review Commands
 
 ```sh
+# From the auto-token repo:
+python3 scripts/export_near_proof_ledger_row.py \
+  --proof-record data/runs/<run-id>/proof.json \
+  --output /tmp/auto-proof-ledger-row.json
+
+# From this repo:
 python3 -m unittest discover -s tests
 python3 -m auto_near_intents build-phase1 examples
+python3 -m auto_near_intents ingest-proof-ledger-row /path/to/auto-proof-ledger-row.json examples
 python3 -m auto_near_intents verify examples
 python3 -m auto_near_intents audit-publication .
 git diff --check HEAD
 ```
 
-`build-phase1` is deterministic and no-spend. The tests also run the builder against a temporary copy of `examples/` so tracked fixtures are not silently rewritten during normal test execution.
+`build-phase1` is deterministic and no-spend. `ingest-proof-ledger-row` consumes the public-safe row exported by `auto-token/scripts/export_near_proof_ledger_row.py`; it updates `proof-ledger-row.json`, `intent-proof-link.json`, `public-dashboard.json`, and `public-redacted-proof.json`. The tests run both builder and ingest paths against temporary copies of `examples/` so tracked fixtures are not silently rewritten during normal test execution.
 
 ## Public Export Rule
 

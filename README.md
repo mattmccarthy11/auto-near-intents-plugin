@@ -35,13 +35,20 @@ examples/public-export-policy.json
 ## Verify
 
 ```sh
+# From the auto-token repo:
+python3 scripts/export_near_proof_ledger_row.py \
+  --proof-record data/runs/<run-id>/proof.json \
+  --output /tmp/auto-proof-ledger-row.json
+
+# From this repo:
 python3 -m unittest discover -s tests
 python3 -m auto_near_intents build-phase1 examples
+python3 -m auto_near_intents ingest-proof-ledger-row /path/to/auto-proof-ledger-row.json examples
 python3 -m auto_near_intents verify examples
 python3 -m auto_near_intents audit-publication .
 ```
 
-All commands are no-spend. They do not call NEAR, submit a transaction, sign a payload, or release funds. If `pytest` is installed, the same tests are also pytest-compatible.
+All commands are no-spend. They do not call NEAR, submit a transaction, sign a payload, or release funds. The ingest command consumes the public-safe `auto-proof-ledger-row/v1` artifact exported by `auto-token/scripts/export_near_proof_ledger_row.py` and updates the proof link plus public dashboard/proof without exposing AUTO private paths or NEAR route metadata. If `pytest` is installed, the same tests are also pytest-compatible.
 
 ## Architecture
 
@@ -52,7 +59,7 @@ AUTO core proof loop
   -> 1Click dry quote request
   -> dry status/refund policy receipt
   -> mock NEAR settlement receipt
-  -> AUTO proof ledger row
+  -> ingested AUTO proof ledger row
   -> public redacted proof/dashboard
 ```
 

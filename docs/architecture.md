@@ -29,7 +29,7 @@ research-intent.json
   -> near-quote-request.json
   -> mock-near-status-refund-receipt.json
   -> mock-near-settlement.json
-  -> proof-ledger-row.json
+  -> proof-ledger-row.json imported from auto-token
   -> intent-proof-link.json
   -> public-dashboard.json
   -> public-redacted-proof.json
@@ -37,4 +37,4 @@ research-intent.json
 
 ## Rule
 
-Compute can be budgeted upfront, but final settlement is proof-gated. The public proof can show settlement state, refund policy state, proof status, and hashes. It must not reveal the buyer's private subject, confidential prompt, private dataset URI, internal buyer ID, exact confidential budget, settlement route, recipient, refund address, deposit address, or private settlement memo.
+Compute can be budgeted upfront, but final settlement is proof-gated. The public proof can show settlement state, refund policy state, AUTO proof ledger identity, proof status, and hashes. It must not reveal the buyer's private subject, confidential prompt, private dataset URI, internal buyer ID, exact confidential budget, settlement route, recipient, refund address, deposit address, local AUTO paths, or private settlement memo.

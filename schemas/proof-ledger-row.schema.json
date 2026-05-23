@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "cost": {
+      "additionalProperties": true,
+      "properties": {
+        "mode": {
+          "enum": [
+            "dry_run",
+            "dry-run",
+            "mock",
+            "planned"
+          ]
+        },
+        "observed_live_spend_usdc": {
+          "const": 0
+        }
+      },
+      "required": [
+        "mode",
+        "observed_live_spend_usdc"
+      ],
+      "type": "object"
+    },
+    "live_near_transaction": {
+      "const": false
+    },
+    "proof_ledger_row_id": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "schema": {
+      "const": "auto-proof-ledger-row/v1"
+    },
+    "spendful": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema",
+    "proof_ledger_row_id",
+    "run_id",
+    "artifact_sha256",
+    "cost",
+    "spendful",
+    "live_near_transaction"
+  ],
+  "title": "AUTO Proof Ledger Row",
+  "type": "object"
+}

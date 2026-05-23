@@ -17,6 +17,7 @@ from auto_near_intents.verifier import (
     SUPPORTED_SWAP_TYPES,
     audit_publication,
     build_phase1_artifacts,
+    ingest_proof_ledger_row,
     validate_demo_schemas,
     verify_demo,
 )
@@ -172,6 +173,64 @@ class NearIntentDemoTests(unittest.TestCase):
         payload = validate_demo_schemas(EXAMPLES, ROOT / "schemas")
         self.assertTrue(payload["ok"], payload)
         self.assertEqual(payload["issues"], [])
+
+    def test_ingest_auto_token_proof_ledger_row_updates_dry_public_package(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_examples = Path(tmp) / "examples"
+            shutil.copytree(EXAMPLES, temp_examples)
+            auto_row = {
+                "schema": "auto-proof-ledger-row/v1",
+                "proof_ledger_row_id": "auto-token-proof-run-abcdef123456",
+                "run_id": "auto-token-proof-run",
+                "artifact_sha256": "a" * 64,
+                "provider": "venice",
+                "result": {
+                    "status": "complete",
+                    "verification_status": "pending_mock_verification",
+                },
+                "cost": {
+                    "mode": "dry_run",
+                    "observed_live_spend_usdc": 0,
+                    "credits": 0,
+                },
+                "source": {
+                    "system": "auto-token",
+                    "public_record": True,
+                },
+                "spendful": False,
+                "live_near_transaction": False,
+            }
+            source = Path(tmp) / "auto-proof-ledger-row.json"
+            source.write_text(json.dumps(auto_row), encoding="utf-8")
+
+            payload = ingest_proof_ledger_row(temp_examples, source)
+
+            self.assertTrue(payload["ok"], payload)
+            self.assertFalse(payload["spendful"])
+            self.assertFalse(payload["live_near_transaction"])
+            self.assertEqual(payload["intent_id"], "auto-near-intent-demo-001")
+            self.assertEqual(payload["settlement_id"], "near-mock-settlement-demo-001")
+            self.assertEqual(payload["quote_request_id"], "near-1click-dry-quote-demo-001")
+            self.assertEqual(payload["status_refund_receipt_id"], "near-1click-mock-status-refund-demo-001")
+            self.assertEqual(payload["proof_ledger_row_id"], auto_row["proof_ledger_row_id"])
+            self.assertEqual(payload["run_id"], auto_row["run_id"])
+            self.assertEqual(payload["artifact_sha256"], auto_row["artifact_sha256"])
+            proof_link = json.loads((temp_examples / "intent-proof-link.json").read_text(encoding="utf-8"))
+            dashboard = json.loads((temp_examples / "public-dashboard.json").read_text(encoding="utf-8"))
+            redacted = json.loads((temp_examples / "public-redacted-proof.json").read_text(encoding="utf-8"))
+            self.assertEqual(proof_link["proof_ledger_row_id"], auto_row["proof_ledger_row_id"])
+            self.assertEqual(proof_link["run_id"], auto_row["run_id"])
+            self.assertEqual(proof_link["artifact_sha256"], auto_row["artifact_sha256"])
+            self.assertEqual(
+                dashboard["near_confidential_research_intent"]["proof_status"]["proof_ledger_row_id"],
+                auto_row["proof_ledger_row_id"],
+            )
+            self.assertEqual(redacted["proof"]["run_id"], auto_row["run_id"])
+            public_text = json.dumps(dashboard, sort_keys=True) + json.dumps(redacted, sort_keys=True)
+            self.assertNotIn("auto-token/data", public_text)
+            self.assertNotIn(str(Path(tmp)), public_text)
+            verify_payload = verify_demo(temp_examples)
+            self.assertTrue(verify_payload["ok"], verify_payload)
 
     def test_publication_audit_has_no_private_auto_internals_or_secrets(self) -> None:
         payload = audit_publication(ROOT)

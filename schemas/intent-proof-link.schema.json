@@ -12,6 +12,9 @@
     "proof_ledger_row_id": {
       "type": "string"
     },
+    "quote_request_id": {
+      "type": "string"
+    },
     "run_id": {
       "type": "string"
     },
@@ -20,12 +23,17 @@
     },
     "settlement_id": {
       "type": "string"
+    },
+    "status_refund_receipt_id": {
+      "type": "string"
     }
   },
   "required": [
     "schema",
     "intent_id",
     "settlement_id",
+    "quote_request_id",
+    "status_refund_receipt_id",
     "proof_ledger_row_id",
     "run_id",
     "artifact_sha256"

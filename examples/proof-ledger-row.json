@@ -4,6 +4,7 @@
     "mode": "dry_run",
     "observed_live_spend_usdc": 0
   },
+  "live_near_transaction": false,
   "proof_ledger_row_id": "auto-proof-ledger-row-demo-001",
   "provider": "auto-research-demo",
   "result": {
@@ -11,5 +12,10 @@
     "verification_status": "pending_mock_verification"
   },
   "run_id": "auto-near-demo-run-001",
-  "schema": "auto-proof-ledger-row/v1"
+  "schema": "auto-proof-ledger-row/v1",
+  "source": {
+    "public_record": true,
+    "system": "auto-token"
+  },
+  "spendful": false
 }
