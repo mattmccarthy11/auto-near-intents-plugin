@@ -26,6 +26,8 @@ This demo does not execute a live transaction. It creates a mock settlement rece
 ```text
 research-intent.json
   -> compute-tranche-policy.json
+  -> near-quote-request.json
+  -> mock-near-status-refund-receipt.json
   -> mock-near-settlement.json
   -> proof-ledger-row.json
   -> intent-proof-link.json

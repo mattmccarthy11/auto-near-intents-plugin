@@ -43,7 +43,7 @@ python3 -m auto_near_intents audit-publication .
 
 ### Phase 1: 1Click Dry Quote Adapter
 
-Add a `near-quote-request.json` artifact that maps `research-intent.json` and `compute-tranche-policy.json` into a 1Click quote request with `dry: true`.
+Add a `near-quote-request.json` artifact that maps `research-intent.json` and `compute-tranche-policy.json` into a 1Click quote request with `dry: true`, plus `mock-near-status-refund-receipt.json` to represent the status/refund side without calling the API.
 
 Required behavior:
 
@@ -99,4 +99,3 @@ The public artifacts should still reveal only:
 - This plugin does not publish private research strategy.
 - This plugin does not send funds by default.
 - This plugin does not claim production readiness for live NEAR settlement.
-

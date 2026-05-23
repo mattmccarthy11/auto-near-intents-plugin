@@ -15,15 +15,19 @@
     },
     "refund": {
       "available": true,
+      "refundTo": "auto-research-refund.near",
+      "refundType": "INTENTS",
       "status": "mock_refundable_if_proof_fails"
     },
     "settlement": {
       "intent_id": "auto-near-intent-demo-001",
       "live_near_transaction": false,
       "provider": "near_intents",
+      "quote_request_id": "near-1click-dry-quote-demo-001",
       "settlement_id": "near-mock-settlement-demo-001",
       "spendful": false,
-      "status": "dry_verified_not_submitted"
+      "status": "dry_verified_not_submitted",
+      "status_refund_receipt_id": "near-1click-mock-status-refund-demo-001"
     }
   },
   "schema": "auto-near-intents-public-dashboard/v1",

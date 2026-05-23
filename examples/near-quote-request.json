@@ -1,0 +1,29 @@
+{
+  "compute_tranche_policy_id": "auto-near-intent-demo-001-compute-tranches",
+  "dry": true,
+  "endpoint": "https://1click.chaindefuser.com/v0/quote",
+  "intent_id": "auto-near-intent-demo-001",
+  "live_near_transaction": false,
+  "method": "POST",
+  "private_fields_forwarded": [],
+  "provider": "near_1click",
+  "quoteRequest": {
+    "amount": "300000000",
+    "deadline": "2026-06-15T00:00:00Z",
+    "depositType": "INTENTS",
+    "destinationAsset": "nep141:usdc.near",
+    "dry": true,
+    "originAsset": "nep141:wrap.near",
+    "quoteWaitingTimeMs": 5000,
+    "recipient": "auto-research-settlement.near",
+    "recipientType": "INTENTS",
+    "refundTo": "auto-research-refund.near",
+    "refundType": "INTENTS",
+    "slippageTolerance": 100,
+    "swapType": "EXACT_INPUT"
+  },
+  "quote_request_id": "near-1click-dry-quote-demo-001",
+  "rule": "This adapter emits a 1Click-compatible dry quote request. It does not send the request, sign an intent, deposit funds, or execute a NEAR transaction.",
+  "schema": "auto-near-1click-quote-request/v1",
+  "spendful": false
+}

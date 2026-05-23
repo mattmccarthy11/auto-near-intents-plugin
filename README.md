@@ -22,6 +22,8 @@ The integration path is: keep AUTO's proof and IP boundary, use NEAR Intents for
 ```text
 examples/research-intent.json
 examples/compute-tranche-policy.json
+examples/near-quote-request.json
+examples/mock-near-status-refund-receipt.json
 examples/mock-near-settlement.json
 examples/proof-ledger-row.json
 examples/intent-proof-link.json
@@ -34,6 +36,7 @@ examples/public-export-policy.json
 
 ```sh
 python3 -m unittest discover -s tests
+python3 -m auto_near_intents build-phase1 examples
 python3 -m auto_near_intents verify examples
 python3 -m auto_near_intents audit-publication .
 ```
@@ -46,6 +49,8 @@ All commands are no-spend. They do not call NEAR, submit a transaction, sign a p
 AUTO core proof loop
   -> research intent
   -> capped compute tranche policy
+  -> 1Click dry quote request
+  -> mock status/refund receipt
   -> mock NEAR settlement receipt
   -> AUTO proof ledger row
   -> public redacted proof/dashboard

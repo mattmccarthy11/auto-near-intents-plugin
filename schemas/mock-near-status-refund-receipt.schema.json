@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "deposit_submitted": {
+      "const": false
+    },
+    "live_near_transaction": {
+      "const": false
+    },
+    "mode": {
+      "const": "mock"
+    },
+    "refund": {
+      "type": "object"
+    },
+    "schema": {
+      "const": "auto-near-1click-status-refund-receipt/v1"
+    },
+    "spendful": {
+      "const": false
+    },
+    "status": {
+      "enum": [
+        "REFUNDED",
+        "FAILED",
+        "PENDING_DEPOSIT"
+      ]
+    },
+    "status_refund_receipt_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "status_refund_receipt_id",
+    "intent_id",
+    "settlement_id",
+    "status",
+    "mode",
+    "spendful",
+    "live_near_transaction",
+    "deposit_submitted",
+    "refund"
+  ],
+  "title": "AUTO NEAR 1Click Mock Status Refund Receipt",
+  "type": "object"
+}

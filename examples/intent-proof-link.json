@@ -8,5 +8,7 @@
   },
   "run_id": "auto-near-demo-run-001",
   "schema": "auto-intent-proof-link/v1",
-  "settlement_id": "near-mock-settlement-demo-001"
+  "quote_request_id": "near-1click-dry-quote-demo-001",
+  "settlement_id": "near-mock-settlement-demo-001",
+  "status_refund_receipt_id": "near-1click-mock-status-refund-demo-001"
 }

@@ -11,6 +11,8 @@ from typing import Any
 REQUIRED_FILES = {
     "intent": "research-intent.json",
     "tranche_policy": "compute-tranche-policy.json",
+    "quote_request": "near-quote-request.json",
+    "status_refund_receipt": "mock-near-status-refund-receipt.json",
     "settlement": "mock-near-settlement.json",
     "proof_ledger_row": "proof-ledger-row.json",
     "proof_link": "intent-proof-link.json",
@@ -109,11 +111,120 @@ def check(name: str, passed: bool, evidence: dict[str, Any], issue: str) -> dict
     }
 
 
+def build_quote_request(intent: dict[str, Any], tranche_policy: dict[str, Any]) -> dict[str, Any]:
+    adapter = intent.get("near_1click_adapter", {})
+    if not isinstance(adapter, dict):
+        adapter = {}
+    max_compute = int(float(tranche_policy.get("max_compute_budget_usdc", 0) or 0))
+    quote_amount = int(adapter.get("amount", 0) or 0)
+    if quote_amount <= 0:
+        quote_amount = max_compute * 1_000_000
+    return {
+        "schema": "auto-near-1click-quote-request/v1",
+        "quote_request_id": adapter.get("quote_request_id", "near-1click-dry-quote-demo-001"),
+        "intent_id": intent.get("intent_id"),
+        "compute_tranche_policy_id": tranche_policy.get("policy_id"),
+        "provider": "near_1click",
+        "endpoint": "https://1click.chaindefuser.com/v0/quote",
+        "method": "POST",
+        "dry": True,
+        "spendful": False,
+        "live_near_transaction": False,
+        "quoteRequest": {
+            "dry": True,
+            "swapType": adapter.get("swapType", "EXACT_INPUT"),
+            "slippageTolerance": int(adapter.get("slippageTolerance", 100)),
+            "originAsset": adapter.get("originAsset", "nep141:wrap.near"),
+            "depositType": adapter.get("depositType", "INTENTS"),
+            "destinationAsset": adapter.get("destinationAsset", "nep141:usdc.near"),
+            "amount": str(quote_amount),
+            "recipient": adapter.get("recipient", "auto-research-settlement.near"),
+            "recipientType": adapter.get("recipientType", "INTENTS"),
+            "refundTo": adapter.get("refundTo", "auto-research-refund.near"),
+            "refundType": adapter.get("refundType", "INTENTS"),
+            "deadline": intent.get("deadline"),
+            "quoteWaitingTimeMs": int(adapter.get("quoteWaitingTimeMs", 5000)),
+        },
+        "private_fields_forwarded": [],
+        "rule": "This adapter emits a 1Click-compatible dry quote request. It does not send the request, sign an intent, deposit funds, or execute a NEAR transaction.",
+    }
+
+
+def build_status_refund_receipt(quote_request: dict[str, Any], settlement: dict[str, Any]) -> dict[str, Any]:
+    quote_body = quote_request.get("quoteRequest", {})
+    if not isinstance(quote_body, dict):
+        quote_body = {}
+    return {
+        "schema": "auto-near-1click-status-refund-receipt/v1",
+        "status_refund_receipt_id": settlement.get(
+            "status_refund_receipt_id", "near-1click-mock-status-refund-demo-001"
+        ),
+        "intent_id": quote_request.get("intent_id"),
+        "settlement_id": settlement.get("settlement_id"),
+        "provider": "near_1click",
+        "endpoint": "https://1click.chaindefuser.com/v0/status",
+        "method": "GET",
+        "mode": "mock",
+        "spendful": False,
+        "live_near_transaction": False,
+        "deposit_submitted": False,
+        "depositAddress": None,
+        "depositMemo": None,
+        "status": "REFUNDED",
+        "refund": {
+            "status": "mock_refundable_if_proof_fails",
+            "refundTo": quote_body.get("refundTo"),
+            "refundType": quote_body.get("refundType"),
+            "refundReason": "PROOF_NOT_VERIFIED_IN_DRY_RUN",
+            "refundedAmount": quote_body.get("amount"),
+        },
+        "swapDetails": {
+            "intentHashes": [],
+            "nearTxHashes": [],
+            "originChainTxHashes": [],
+            "destinationChainTxHashes": [],
+        },
+        "rule": "This receipt is a mock status/refund fixture. No deposit address was funded and no status endpoint was called.",
+    }
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def build_phase1_artifacts(root: Path) -> dict[str, Any]:
+    root = root.expanduser().resolve()
+    intent = load_json(root / REQUIRED_FILES["intent"])
+    tranche_policy = load_json(root / REQUIRED_FILES["tranche_policy"])
+    settlement = load_json(root / REQUIRED_FILES["settlement"])
+    quote_request = build_quote_request(intent, tranche_policy)
+    status_refund_receipt = build_status_refund_receipt(quote_request, settlement)
+    write_json(root / REQUIRED_FILES["quote_request"], quote_request)
+    write_json(root / REQUIRED_FILES["status_refund_receipt"], status_refund_receipt)
+    return {
+        "schema": "auto-near-1click-phase1-build/v1",
+        "ok": True,
+        "spendful": False,
+        "live_near_transaction": False,
+        "root": str(root),
+        "wrote": [
+            str(root / REQUIRED_FILES["quote_request"]),
+            str(root / REQUIRED_FILES["status_refund_receipt"]),
+        ],
+        "intent_id": quote_request.get("intent_id"),
+        "quote_dry": quote_request.get("quoteRequest", {}).get("dry"),
+        "status": status_refund_receipt.get("status"),
+    }
+
+
 def verify_demo(root: Path) -> dict[str, Any]:
     root = root.expanduser().resolve()
     demo = load_demo(root)
     intent = demo["intent"]
     tranche_policy = demo["tranche_policy"]
+    quote_request = demo["quote_request"]
+    status_refund_receipt = demo["status_refund_receipt"]
     settlement = demo["settlement"]
     proof_ledger_row = demo["proof_ledger_row"]
     proof_link = demo["proof_link"]
@@ -130,7 +241,16 @@ def verify_demo(root: Path) -> dict[str, Any]:
     tranche_total = sum(float(item.get("max_release_usdc", 0) or 0) for item in tranches if isinstance(item, dict))
     max_compute = float(tranche_policy.get("max_compute_budget_usdc", 0) or 0)
 
-    public_values = [dashboard, redacted_proof]
+    expected_quote_request = build_quote_request(intent, tranche_policy)
+    expected_status_refund_receipt = build_status_refund_receipt(quote_request, settlement)
+    quote_body = quote_request.get("quoteRequest", {})
+    if not isinstance(quote_body, dict):
+        quote_body = {}
+    refund = status_refund_receipt.get("refund", {})
+    if not isinstance(refund, dict):
+        refund = {}
+
+    public_values = [dashboard, redacted_proof, quote_request, status_refund_receipt]
     private_values = find_values(intent, PRIVATE_VALUE_FIELDS)
     public_export_keys = sorted(set(find_keys(public_values, PRIVATE_FIELD_NAMES)))
     leaked_values = sorted(
@@ -159,6 +279,7 @@ def verify_demo(root: Path) -> dict[str, Any]:
             "compute_tranche_policy_capped",
             tranche_policy.get("schema") == "auto-compute-tranche-policy/v1"
             and tranche_policy.get("intent_id") == intent_id
+            and bool(tranche_policy.get("policy_id"))
             and max_compute > 0
             and tranche_total <= max_compute
             and tranche_policy.get("live_release_enabled") is False
@@ -172,9 +293,58 @@ def verify_demo(root: Path) -> dict[str, Any]:
             "compute tranche policy must cap spend and disable live releases",
         ),
         check(
+            "near_1click_quote_request_is_dry_and_derived",
+            quote_request.get("schema") == "auto-near-1click-quote-request/v1"
+            and quote_request == expected_quote_request
+            and quote_request.get("intent_id") == intent_id
+            and quote_request.get("compute_tranche_policy_id") == tranche_policy.get("policy_id")
+            and quote_request.get("dry") is True
+            and quote_request.get("spendful") is False
+            and quote_request.get("live_near_transaction") is False
+            and quote_body.get("dry") is True
+            and quote_body.get("swapType") in {"EXACT_INPUT", "EXACT_OUTPUT"}
+            and quote_body.get("recipientType") in {"INTENTS", "DESTINATION_CHAIN"}
+            and quote_body.get("refundType") in {"INTENTS", "ORIGIN_CHAIN"}
+            and bool(quote_body.get("originAsset"))
+            and bool(quote_body.get("destinationAsset"))
+            and bool(quote_body.get("amount")),
+            {
+                "intent_id": quote_request.get("intent_id"),
+                "compute_tranche_policy_id": quote_request.get("compute_tranche_policy_id"),
+                "dry": quote_request.get("dry"),
+                "quote_dry": quote_body.get("dry"),
+                "endpoint": quote_request.get("endpoint"),
+            },
+            "near-quote-request.json must be a derived 1Click dry quote request with no spend/live transaction",
+        ),
+        check(
+            "mock_status_refund_receipt_blocks_live_deposit",
+            status_refund_receipt.get("schema") == "auto-near-1click-status-refund-receipt/v1"
+            and status_refund_receipt == expected_status_refund_receipt
+            and status_refund_receipt.get("intent_id") == intent_id
+            and status_refund_receipt.get("settlement_id") == settlement_id
+            and status_refund_receipt.get("mode") == "mock"
+            and status_refund_receipt.get("spendful") is False
+            and status_refund_receipt.get("live_near_transaction") is False
+            and status_refund_receipt.get("deposit_submitted") is False
+            and status_refund_receipt.get("depositAddress") is None
+            and status_refund_receipt.get("status") == "REFUNDED"
+            and refund.get("refundTo") == quote_body.get("refundTo")
+            and refund.get("refundType") == quote_body.get("refundType"),
+            {
+                "intent_id": status_refund_receipt.get("intent_id"),
+                "settlement_id": status_refund_receipt.get("settlement_id"),
+                "status": status_refund_receipt.get("status"),
+                "deposit_submitted": status_refund_receipt.get("deposit_submitted"),
+                "refund": refund,
+            },
+            "mock status/refund receipt must keep deposits disabled and bind refund metadata to the quote request",
+        ),
+        check(
             "mock_near_settlement_no_live_transaction",
             settlement.get("schema") == "auto-near-mock-settlement/v1"
             and settlement.get("intent_id") == intent_id
+            and settlement.get("quote_request_id") == quote_request.get("quote_request_id")
             and settlement.get("mode") == "mock"
             and settlement.get("spendful") is False
             and settlement.get("live_near_transaction") is False
@@ -193,6 +363,8 @@ def verify_demo(root: Path) -> dict[str, Any]:
             proof_link.get("schema") == "auto-intent-proof-link/v1"
             and proof_link.get("intent_id") == intent_id
             and proof_link.get("settlement_id") == settlement_id
+            and proof_link.get("quote_request_id") == quote_request.get("quote_request_id")
+            and proof_link.get("status_refund_receipt_id") == status_refund_receipt.get("status_refund_receipt_id")
             and proof_link.get("proof_ledger_row_id") == proof_row_id
             and proof_link.get("run_id") == proof_run_id
             and proof_link.get("artifact_sha256") == artifact_hash,
@@ -250,6 +422,8 @@ def verify_demo(root: Path) -> dict[str, Any]:
         "summary": {
             "intent_id": intent_id,
             "settlement_id": settlement_id,
+            "quote_request_id": quote_request.get("quote_request_id"),
+            "status_refund_receipt_id": status_refund_receipt.get("status_refund_receipt_id"),
             "proof_ledger_row_id": proof_row_id,
             "dashboard_section": "near_confidential_research_intent",
             "public_export_redacted": not leaked_values and not public_export_keys,
@@ -308,11 +482,21 @@ def audit_publication(root: Path) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Verify the AUTO NEAR confidential research intent demo.")
     subparsers = parser.add_subparsers(dest="command")
+    build = subparsers.add_parser("build-phase1", help="write Phase 1 1Click dry quote/status artifacts")
+    build.add_argument("root", nargs="?", default="examples", type=Path)
     verify = subparsers.add_parser("verify", help="verify demo artifacts")
     verify.add_argument("root", nargs="?", default="examples", type=Path)
     audit = subparsers.add_parser("audit-publication", help="scan repo for public-publication risk patterns")
     audit.add_argument("root", nargs="?", default=".", type=Path)
     args = parser.parse_args(argv)
+    if args.command == "build-phase1":
+        try:
+            payload = build_phase1_artifacts(args.root)
+        except ValueError as exc:
+            print(json.dumps({"ok": False, "error": str(exc)}, indent=2, sort_keys=True), file=sys.stderr)
+            return 1
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
     if args.command == "verify":
         try:
             payload = verify_demo(args.root)

@@ -3,6 +3,7 @@
   "intent_id": "auto-near-intent-demo-001",
   "live_release_enabled": false,
   "max_compute_budget_usdc": 300,
+  "policy_id": "auto-near-intent-demo-001-compute-tranches",
   "refund_rule": "unused_compute_allowance_refunds_to_buyer_when_task_expires_or_proof_fails",
   "schema": "auto-compute-tranche-policy/v1",
   "settlement_provider": "near_intents",

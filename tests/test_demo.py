@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from auto_near_intents.verifier import REQUIRED_FILES, audit_publication, verify_demo
+from auto_near_intents.verifier import REQUIRED_FILES, audit_publication, build_phase1_artifacts, verify_demo
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,7 +23,17 @@ class NearIntentDemoTests(unittest.TestCase):
         self.assertFalse(payload["spendful"])
         self.assertFalse(payload["live_near_transaction"])
         self.assertEqual(payload["failed_count"], 0)
-        self.assertEqual(payload["passed_count"], 7)
+        self.assertEqual(payload["passed_count"], 9)
+
+    def test_phase1_builder_materializes_dry_quote_and_status_refund_artifacts(self) -> None:
+        payload = build_phase1_artifacts(EXAMPLES)
+        self.assertTrue(payload["ok"], payload)
+        self.assertFalse(payload["spendful"])
+        self.assertFalse(payload["live_near_transaction"])
+        self.assertEqual(payload["quote_dry"], True)
+        self.assertEqual(payload["status"], "REFUNDED")
+        self.assertTrue((EXAMPLES / "near-quote-request.json").is_file())
+        self.assertTrue((EXAMPLES / "mock-near-status-refund-receipt.json").is_file())
 
     def test_public_dashboard_exposes_settlement_refund_confidentiality_and_proof(self) -> None:
         dashboard = json.loads((EXAMPLES / "public-dashboard.json").read_text(encoding="utf-8"))
@@ -63,6 +73,32 @@ class NearIntentDemoTests(unittest.TestCase):
         self.assertLessEqual(total, policy["max_compute_budget_usdc"])
         self.assertFalse(policy["live_release_enabled"])
         self.assertTrue(all(item["live_release_enabled"] is False for item in policy["tranches"]))
+
+    def test_near_1click_quote_request_is_dry_and_policy_bound(self) -> None:
+        quote = json.loads((EXAMPLES / "near-quote-request.json").read_text(encoding="utf-8"))
+        policy = json.loads((EXAMPLES / "compute-tranche-policy.json").read_text(encoding="utf-8"))
+        body = quote["quoteRequest"]
+        self.assertEqual(quote["schema"], "auto-near-1click-quote-request/v1")
+        self.assertEqual(quote["compute_tranche_policy_id"], policy["policy_id"])
+        self.assertTrue(quote["dry"])
+        self.assertTrue(body["dry"])
+        self.assertFalse(quote["spendful"])
+        self.assertFalse(quote["live_near_transaction"])
+        self.assertEqual(body["swapType"], "EXACT_INPUT")
+        self.assertEqual(body["depositType"], "INTENTS")
+        self.assertEqual(body["recipientType"], "INTENTS")
+        self.assertEqual(body["refundType"], "INTENTS")
+
+    def test_mock_status_refund_receipt_has_no_live_deposit(self) -> None:
+        receipt = json.loads((EXAMPLES / "mock-near-status-refund-receipt.json").read_text(encoding="utf-8"))
+        self.assertEqual(receipt["schema"], "auto-near-1click-status-refund-receipt/v1")
+        self.assertEqual(receipt["status"], "REFUNDED")
+        self.assertEqual(receipt["mode"], "mock")
+        self.assertFalse(receipt["spendful"])
+        self.assertFalse(receipt["live_near_transaction"])
+        self.assertFalse(receipt["deposit_submitted"])
+        self.assertIsNone(receipt["depositAddress"])
+        self.assertEqual(receipt["refund"]["refundReason"], "PROOF_NOT_VERIFIED_IN_DRY_RUN")
 
     def test_publication_audit_has_no_private_auto_internals_or_secrets(self) -> None:
         payload = audit_publication(ROOT)

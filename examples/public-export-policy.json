@@ -4,6 +4,8 @@
     "objective_public",
     "settlement_provider",
     "settlement_id",
+    "quote_request_id",
+    "status_refund_receipt_id",
     "proof_ledger_row_id",
     "run_id",
     "artifact_sha256",

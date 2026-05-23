@@ -1,0 +1,30 @@
+{
+  "depositAddress": null,
+  "depositMemo": null,
+  "deposit_submitted": false,
+  "endpoint": "https://1click.chaindefuser.com/v0/status",
+  "intent_id": "auto-near-intent-demo-001",
+  "live_near_transaction": false,
+  "method": "GET",
+  "mode": "mock",
+  "provider": "near_1click",
+  "refund": {
+    "refundReason": "PROOF_NOT_VERIFIED_IN_DRY_RUN",
+    "refundTo": "auto-research-refund.near",
+    "refundType": "INTENTS",
+    "refundedAmount": "300000000",
+    "status": "mock_refundable_if_proof_fails"
+  },
+  "rule": "This receipt is a mock status/refund fixture. No deposit address was funded and no status endpoint was called.",
+  "schema": "auto-near-1click-status-refund-receipt/v1",
+  "settlement_id": "near-mock-settlement-demo-001",
+  "spendful": false,
+  "status": "REFUNDED",
+  "status_refund_receipt_id": "near-1click-mock-status-refund-demo-001",
+  "swapDetails": {
+    "destinationChainTxHashes": [],
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "originChainTxHashes": []
+  }
+}

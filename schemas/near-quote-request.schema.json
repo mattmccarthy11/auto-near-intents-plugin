@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "dry": {
+      "const": true
+    },
+    "intent_id": {
+      "type": "string"
+    },
+    "live_near_transaction": {
+      "const": false
+    },
+    "quoteRequest": {
+      "required": [
+        "dry",
+        "swapType",
+        "originAsset",
+        "depositType",
+        "destinationAsset",
+        "amount",
+        "recipient",
+        "recipientType",
+        "refundTo",
+        "refundType",
+        "deadline"
+      ],
+      "type": "object"
+    },
+    "quote_request_id": {
+      "type": "string"
+    },
+    "schema": {
+      "const": "auto-near-1click-quote-request/v1"
+    },
+    "spendful": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema",
+    "quote_request_id",
+    "intent_id",
+    "quoteRequest",
+    "dry",
+    "spendful",
+    "live_near_transaction"
+  ],
+  "title": "AUTO NEAR 1Click Dry Quote Request",
+  "type": "object"
+}
