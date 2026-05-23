@@ -18,7 +18,7 @@
   },
   "schema": "auto-near-mock-settlement/v1",
   "settlement_id": "near-mock-settlement-demo-001",
-  "settlement_memo_private": "Do not publish buyer budget, target timing, or private task details.",
+  "settlement_memo_private": "Synthetic demo-only settlement memo placeholder. Do not publish real buyer budget, timing, or private task details.",
   "settlement_status": "dry_verified_not_submitted",
   "spendful": false
 }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,19 @@ PRIVATE_FIELD_NAMES = PRIVATE_VALUE_FIELDS | {
     "private_fields",
     "confidential_fields",
     "private_values",
+}
+PUBLICATION_AUDIT_SKIP_DIRS = {".git", "__pycache__", ".pytest_cache", ".venv", "dist", "build"}
+PUBLICATION_AUDIT_SKIP_SUFFIXES = {".pyc", ".pyo", ".png", ".jpg", ".jpeg", ".gif", ".pdf"}
+PUBLICATION_RISK_PATTERNS = {
+    "github_token": re.compile(r"gh[opsu]_[A-Za-z0-9_]{20,}"),
+    "openai_key": re.compile(r"sk-[A-Za-z0-9_-]{20,}"),
+    "private_key_block": re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    "env_private_key": re.compile(r"\b(?:PRIVATE_KEY|NEAR_PRIVATE_KEY)\s*[:=]\s*['\"]?[A-Za-z0-9_/+=-]{16,}", re.IGNORECASE),
+    "env_api_key": re.compile(r"\bapi[_-]?key\s*[:=]\s*['\"]?[A-Za-z0-9_/+=-]{16,}", re.IGNORECASE),
+    "venice_key": re.compile(r"\bVENICE_API_KEY\b"),
+    "local_auto_token_path": re.compile(r"/Users/[^\\s'\"`]+/GitHub/auto-token"),
+    "auto_token_private_data_path": re.compile(r"\bauto-token/data/(?:runs|live-approvals|agent-sessions|agent-payments)"),
+    "real_s3_uri": re.compile(r"\bs3://"),
 }
 
 
@@ -244,19 +258,73 @@ def verify_demo(root: Path) -> dict[str, Any]:
     }
 
 
+def iter_publication_files(root: Path) -> list[Path]:
+    files: list[Path] = []
+    for path in root.rglob("*"):
+        if any(part in PUBLICATION_AUDIT_SKIP_DIRS for part in path.parts):
+            continue
+        if path.suffix in PUBLICATION_AUDIT_SKIP_SUFFIXES:
+            continue
+        if path.is_file():
+            files.append(path)
+    return sorted(files)
+
+
+def audit_publication(root: Path) -> dict[str, Any]:
+    root = root.expanduser().resolve()
+    issues: list[dict[str, Any]] = []
+    checked_files = iter_publication_files(root)
+    for path in checked_files:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        relative_path = str(path.relative_to(root))
+        for name, pattern in PUBLICATION_RISK_PATTERNS.items():
+            if pattern.search(text):
+                issues.append(
+                    {
+                        "scope": "public_repo_scan",
+                        "pattern": name,
+                        "path": relative_path,
+                        "issue": "publication-risk pattern found",
+                    }
+                )
+    return {
+        "schema": "auto-near-intents-publication-audit/v1",
+        "ok": not issues,
+        "spendful": False,
+        "live_near_transaction": False,
+        "root": str(root),
+        "checked_file_count": len(checked_files),
+        "issues": issues,
+        "rule": (
+            "Public repo artifacts must not contain real keys, private-key blocks, local AUTO internal paths, "
+            "real cloud private dataset URIs, or private auto-token data paths."
+        ),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Verify the AUTO NEAR confidential research intent demo.")
     subparsers = parser.add_subparsers(dest="command")
     verify = subparsers.add_parser("verify", help="verify demo artifacts")
     verify.add_argument("root", nargs="?", default="examples", type=Path)
+    audit = subparsers.add_parser("audit-publication", help="scan repo for public-publication risk patterns")
+    audit.add_argument("root", nargs="?", default=".", type=Path)
     args = parser.parse_args(argv)
-    if args.command != "verify":
+    if args.command == "verify":
+        try:
+            payload = verify_demo(args.root)
+        except ValueError as exc:
+            print(json.dumps({"ok": False, "error": str(exc)}, indent=2, sort_keys=True), file=sys.stderr)
+            return 1
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0 if payload["ok"] else 1
+    if args.command == "audit-publication":
+        payload = audit_publication(args.root)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0 if payload["ok"] else 1
+    else:
         parser.print_help()
         return 2
-    try:
-        payload = verify_demo(args.root)
-    except ValueError as exc:
-        print(json.dumps({"ok": False, "error": str(exc)}, indent=2, sort_keys=True), file=sys.stderr)
-        return 1
-    print(json.dumps(payload, indent=2, sort_keys=True))
-    return 0 if payload["ok"] else 1

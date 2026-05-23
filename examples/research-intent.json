@@ -11,7 +11,7 @@
     ]
   },
   "buyer": {
-    "buyer_internal_id": "acme-rd-private-procurement-42",
+    "buyer_internal_id": "demo-private-buyer-id-000",
     "public_alias": "confidential-research-buyer"
   },
   "confidential_budget_usdc": 1000,
@@ -28,13 +28,13 @@
     "public_disclosure": "ids_hashes_statuses_only",
     "selective_disclosure_required": true
   },
-  "confidential_prompt": "Evaluate the private target list and produce a ranked reproduction plan without revealing target identities.",
+  "confidential_prompt": "Synthetic demo-only private prompt placeholder. Do not use real customer research text in public fixtures.",
   "created_at": "2026-05-22T00:00:00Z",
   "deadline": "2026-06-15T00:00:00Z",
   "intent_id": "auto-near-intent-demo-001",
   "objective_public": "Produce a proof-backed autonomous research result with public-safe artifacts and confidential settlement.",
-  "private_dataset_uri": "s3://private-auto-research-demo/targets.csv",
-  "private_subject": "undisclosed enterprise research target list",
+  "private_dataset_uri": "mock://demo-private-dataset/targets.csv",
+  "private_subject": "synthetic private research target placeholder",
   "schema": "auto-research-intent/v1",
   "settlement_provider": "near_intents"
 }

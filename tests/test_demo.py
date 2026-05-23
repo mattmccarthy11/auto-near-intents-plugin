@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from auto_near_intents.verifier import REQUIRED_FILES, verify_demo
+from auto_near_intents.verifier import REQUIRED_FILES, audit_publication, verify_demo
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,6 +63,11 @@ class NearIntentDemoTests(unittest.TestCase):
         self.assertLessEqual(total, policy["max_compute_budget_usdc"])
         self.assertFalse(policy["live_release_enabled"])
         self.assertTrue(all(item["live_release_enabled"] is False for item in policy["tranches"]))
+
+    def test_publication_audit_has_no_private_auto_internals_or_secrets(self) -> None:
+        payload = audit_publication(ROOT)
+        self.assertTrue(payload["ok"], payload)
+        self.assertEqual(payload["issues"], [])
 
 
 if __name__ == "__main__":
