@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "intent_id": {
+      "type": "string"
+    },
+    "live_release_enabled": {
+      "const": false
+    },
+    "max_compute_budget_usdc": {
+      "exclusiveMinimum": 0,
+      "type": "number"
+    },
+    "schema": {
+      "const": "auto-compute-tranche-policy/v1"
+    },
+    "tranches": {
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema",
+    "intent_id",
+    "max_compute_budget_usdc",
+    "live_release_enabled",
+    "tranches"
+  ],
+  "title": "AUTO Compute Tranche Policy",
+  "type": "object"
+}

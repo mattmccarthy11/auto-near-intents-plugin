@@ -1,0 +1,15 @@
+{
+  "artifact_sha256": "b8c7e0044ff99c730fdc8f3c6d5ecdd460fd547b05a034dc3dd4f69c0f6712c9",
+  "cost": {
+    "mode": "dry_run",
+    "observed_live_spend_usdc": 0
+  },
+  "proof_ledger_row_id": "auto-proof-ledger-row-demo-001",
+  "provider": "auto-research-demo",
+  "result": {
+    "status": "complete_mock",
+    "verification_status": "pending_mock_verification"
+  },
+  "run_id": "auto-near-demo-run-001",
+  "schema": "auto-proof-ledger-row/v1"
+}

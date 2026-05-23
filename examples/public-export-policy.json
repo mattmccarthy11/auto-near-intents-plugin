@@ -1,0 +1,28 @@
+{
+  "allowed_public_fields": [
+    "intent_id",
+    "objective_public",
+    "settlement_provider",
+    "settlement_id",
+    "proof_ledger_row_id",
+    "run_id",
+    "artifact_sha256",
+    "status",
+    "refund_status",
+    "live_near_transaction",
+    "spendful"
+  ],
+  "denied_public_field_names": [
+    "private_subject",
+    "confidential_prompt",
+    "private_dataset_uri",
+    "buyer_internal_id",
+    "confidential_budget_usdc",
+    "settlement_memo_private",
+    "private_fields",
+    "confidential_fields",
+    "private_values"
+  ],
+  "rule": "Public proof exports may contain IDs, hashes, statuses, and refund/proof state only. Private intent values and confidential settlement metadata must remain out of public dashboards, GitLawb bundles, and public proof JSON.",
+  "schema": "auto-public-export-policy/v1"
+}

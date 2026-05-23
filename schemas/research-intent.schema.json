@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "confidentiality": {
+      "required": [
+        "mode",
+        "private_fields"
+      ],
+      "type": "object"
+    },
+    "intent_id": {
+      "type": "string"
+    },
+    "schema": {
+      "const": "auto-research-intent/v1"
+    },
+    "settlement_provider": {
+      "const": "near_intents"
+    }
+  },
+  "required": [
+    "schema",
+    "intent_id",
+    "objective_public",
+    "settlement_provider",
+    "confidentiality"
+  ],
+  "title": "AUTO Research Intent",
+  "type": "object"
+}

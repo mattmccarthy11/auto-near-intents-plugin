@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "intent_id": {
+      "type": "string"
+    },
+    "live_near_transaction": {
+      "const": false
+    },
+    "mode": {
+      "const": "mock"
+    },
+    "near_transaction_hash": {
+      "type": "null"
+    },
+    "schema": {
+      "const": "auto-near-mock-settlement/v1"
+    },
+    "settlement_id": {
+      "type": "string"
+    },
+    "spendful": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema",
+    "settlement_id",
+    "intent_id",
+    "mode",
+    "spendful",
+    "live_near_transaction",
+    "near_transaction_hash"
+  ],
+  "title": "AUTO NEAR Mock Settlement",
+  "type": "object"
+}

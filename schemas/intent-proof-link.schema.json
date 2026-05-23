@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "intent_id": {
+      "type": "string"
+    },
+    "proof_ledger_row_id": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "schema": {
+      "const": "auto-intent-proof-link/v1"
+    },
+    "settlement_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "intent_id",
+    "settlement_id",
+    "proof_ledger_row_id",
+    "run_id",
+    "artifact_sha256"
+  ],
+  "title": "AUTO Intent Proof Link",
+  "type": "object"
+}

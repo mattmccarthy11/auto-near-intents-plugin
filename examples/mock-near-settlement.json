@@ -1,0 +1,24 @@
+{
+  "compute_tranche_policy_id": "auto-near-intent-demo-001-compute-tranches",
+  "created_at": "2026-05-22T00:00:00Z",
+  "final_payout": {
+    "live_release_enabled": false,
+    "release_condition": "proof_package_verified",
+    "status": "blocked_until_proof_verified"
+  },
+  "intent_id": "auto-near-intent-demo-001",
+  "live_near_transaction": false,
+  "mode": "mock",
+  "near_account": null,
+  "near_transaction_hash": null,
+  "refund": {
+    "available": true,
+    "status": "mock_refundable_if_proof_fails",
+    "trigger": "deadline_expired_or_proof_verification_failed"
+  },
+  "schema": "auto-near-mock-settlement/v1",
+  "settlement_id": "near-mock-settlement-demo-001",
+  "settlement_memo_private": "Do not publish buyer budget, target timing, or private task details.",
+  "settlement_status": "dry_verified_not_submitted",
+  "spendful": false
+}

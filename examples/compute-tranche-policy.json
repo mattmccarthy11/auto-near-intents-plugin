@@ -1,0 +1,33 @@
+{
+  "approval_required_for_live_release": true,
+  "intent_id": "auto-near-intent-demo-001",
+  "live_release_enabled": false,
+  "max_compute_budget_usdc": 300,
+  "refund_rule": "unused_compute_allowance_refunds_to_buyer_when_task_expires_or_proof_fails",
+  "schema": "auto-compute-tranche-policy/v1",
+  "settlement_provider": "near_intents",
+  "spendful": false,
+  "tranches": [
+    {
+      "id": "acceptance_compute_allowance",
+      "live_release_enabled": false,
+      "max_release_usdc": 75,
+      "release_condition": "task_accepted_and_policy_verified",
+      "status": "mock_locked"
+    },
+    {
+      "id": "intermediate_reproduction_allowance",
+      "live_release_enabled": false,
+      "max_release_usdc": 125,
+      "release_condition": "intermediate_artifact_hash_recorded",
+      "status": "mock_locked"
+    },
+    {
+      "id": "final_success_reward",
+      "live_release_enabled": false,
+      "max_release_usdc": 100,
+      "release_condition": "proof_package_verified",
+      "status": "blocked_until_proof_verified"
+    }
+  ]
+}

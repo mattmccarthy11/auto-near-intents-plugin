@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "allowed_public_fields": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "denied_public_field_names": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema": {
+      "const": "auto-public-export-policy/v1"
+    }
+  },
+  "required": [
+    "schema",
+    "allowed_public_fields",
+    "denied_public_field_names",
+    "rule"
+  ],
+  "title": "AUTO Public Export Policy",
+  "type": "object"
+}

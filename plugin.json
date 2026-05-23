@@ -1,0 +1,18 @@
+{
+  "capabilities": [
+    "research_intent_schema",
+    "compute_tranche_policy",
+    "mock_near_settlement",
+    "proof_ledger_link",
+    "public_redaction_verifier"
+  ],
+  "default_mode": "dry_run",
+  "description": "AUTO settlement extension for confidential, proof-gated autonomous research intents on NEAR.",
+  "external_writes_allowed": false,
+  "id": "auto-near-intents-plugin",
+  "live_near_transactions_enabled": false,
+  "name": "AUTO NEAR Intents Plugin",
+  "schema": "auto-plugin/v1",
+  "spendful": false,
+  "version": "0.1.0"
+}

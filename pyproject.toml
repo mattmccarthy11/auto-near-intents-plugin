@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-near-intents-plugin"
+version = "0.1.0"
+description = "AUTO plugin demo for proof-gated confidential research intents on NEAR"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+[project.scripts]
+auto-near-intents = "auto_near_intents.verifier:main"
