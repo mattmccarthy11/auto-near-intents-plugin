@@ -2,6 +2,8 @@
   "capabilities": [
     "research_intent_schema",
     "compute_tranche_policy",
+    "near_1click_dry_quote",
+    "dry_status_refund_policy",
     "mock_near_settlement",
     "proof_ledger_link",
     "public_redaction_verifier"

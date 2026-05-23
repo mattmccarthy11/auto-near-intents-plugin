@@ -5,13 +5,56 @@
     "deposit_submitted": {
       "const": false
     },
+    "depositAddress": {
+      "type": "null"
+    },
+    "depositMemo": {
+      "type": "null"
+    },
     "live_near_transaction": {
       "const": false
     },
     "mode": {
       "const": "mock"
     },
+    "near_status": {
+      "type": "null"
+    },
     "refund": {
+      "additionalProperties": true,
+      "properties": {
+        "actualRefundedAmount": {
+          "type": "null"
+        },
+        "policy_status": {
+          "const": "mock_refundable_if_proof_fails"
+        },
+        "refundableAmount": {
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "refundPolicyReason": {
+          "const": "PROOF_NOT_VERIFIED_IN_DRY_RUN"
+        },
+        "refundTo": {
+          "type": "string"
+        },
+        "refundType": {
+          "enum": [
+            "ORIGIN_CHAIN",
+            "INTENTS",
+            "CONFIDENTIAL_INTENTS"
+          ]
+        }
+      },
+      "required": [
+        "policy_status",
+        "refundTo",
+        "refundType",
+        "refundPolicyReason",
+        "refundableAmount",
+        "actualRefundedAmount"
+      ],
       "type": "object"
     },
     "schema": {
@@ -22,10 +65,11 @@
     },
     "status": {
       "enum": [
-        "REFUNDED",
-        "FAILED",
-        "PENDING_DEPOSIT"
+        "NO_DEPOSIT_DRY_RUN"
       ]
+    },
+    "status_endpoint_called": {
+      "const": false
     },
     "status_refund_receipt_id": {
       "type": "string"
@@ -40,7 +84,11 @@
     "mode",
     "spendful",
     "live_near_transaction",
+    "status_endpoint_called",
     "deposit_submitted",
+    "depositAddress",
+    "depositMemo",
+    "near_status",
     "refund"
   ],
   "title": "AUTO NEAR 1Click Mock Status Refund Receipt",

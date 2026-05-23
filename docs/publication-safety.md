@@ -24,4 +24,4 @@ The publication audit scans for:
 - private `auto-token/data` paths
 - real cloud private dataset URIs using the S3 scheme
 
-The public export verifier separately checks that the public dashboard and public redacted proof do not include private intent field names or values.
+The public export verifier separately checks that the public dashboard and public redacted proof do not include private intent field names, private intent values, recipient routes, refund routes, deposit addresses, deposit memos, or other settlement route metadata.

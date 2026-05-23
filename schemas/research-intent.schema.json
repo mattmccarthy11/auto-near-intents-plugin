@@ -12,6 +12,56 @@
     "intent_id": {
       "type": "string"
     },
+    "near_1click_adapter": {
+      "additionalProperties": true,
+      "properties": {
+        "depositMode": {
+          "enum": [
+            "SIMPLE",
+            "MEMO"
+          ]
+        },
+        "depositType": {
+          "enum": [
+            "ORIGIN_CHAIN",
+            "INTENTS",
+            "CONFIDENTIAL_INTENTS"
+          ]
+        },
+        "recipientType": {
+          "enum": [
+            "DESTINATION_CHAIN",
+            "INTENTS",
+            "CONFIDENTIAL_INTENTS"
+          ]
+        },
+        "refundType": {
+          "enum": [
+            "ORIGIN_CHAIN",
+            "INTENTS",
+            "CONFIDENTIAL_INTENTS"
+          ]
+        },
+        "swapType": {
+          "enum": [
+            "EXACT_INPUT",
+            "EXACT_OUTPUT",
+            "FLEX_INPUT",
+            "ANY_INPUT"
+          ]
+        }
+      },
+      "required": [
+        "swapType",
+        "depositType",
+        "depositMode",
+        "recipient",
+        "recipientType",
+        "refundTo",
+        "refundType"
+      ],
+      "type": "object"
+    },
     "schema": {
       "const": "auto-research-intent/v1"
     },
@@ -24,6 +74,7 @@
     "intent_id",
     "objective_public",
     "settlement_provider",
+    "near_1click_adapter",
     "confidentiality"
   ],
   "title": "AUTO Research Intent",

@@ -23,7 +23,18 @@
     "settlement_memo_private",
     "private_fields",
     "confidential_fields",
-    "private_values"
+    "private_values",
+    "recipient",
+    "recipientType",
+    "refundTo",
+    "refundType",
+    "depositType",
+    "depositMode",
+    "depositAddress",
+    "depositMemo",
+    "virtualChainRecipient",
+    "virtualChainRefundRecipient",
+    "customRecipientMsg"
   ],
   "rule": "Public proof exports may contain IDs, hashes, statuses, and refund/proof state only. Private intent values and confidential settlement metadata must remain out of public dashboards, GitLawb bundles, and public proof JSON.",
   "schema": "auto-public-export-policy/v1"

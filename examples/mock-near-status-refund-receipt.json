@@ -7,19 +7,22 @@
   "live_near_transaction": false,
   "method": "GET",
   "mode": "mock",
+  "near_status": null,
   "provider": "near_1click",
   "refund": {
-    "refundReason": "PROOF_NOT_VERIFIED_IN_DRY_RUN",
+    "actualRefundedAmount": null,
+    "policy_status": "mock_refundable_if_proof_fails",
+    "refundPolicyReason": "PROOF_NOT_VERIFIED_IN_DRY_RUN",
     "refundTo": "auto-research-refund.near",
-    "refundType": "INTENTS",
-    "refundedAmount": "300000000",
-    "status": "mock_refundable_if_proof_fails"
+    "refundType": "CONFIDENTIAL_INTENTS",
+    "refundableAmount": "300000000"
   },
-  "rule": "This receipt is a mock status/refund fixture. No deposit address was funded and no status endpoint was called.",
+  "rule": "This receipt is a dry status-policy fixture. No deposit address was funded, no status endpoint was called, and no real NEAR swap status is claimed.",
   "schema": "auto-near-1click-status-refund-receipt/v1",
   "settlement_id": "near-mock-settlement-demo-001",
   "spendful": false,
-  "status": "REFUNDED",
+  "status": "NO_DEPOSIT_DRY_RUN",
+  "status_endpoint_called": false,
   "status_refund_receipt_id": "near-1click-mock-status-refund-demo-001",
   "swapDetails": {
     "destinationChainTxHashes": [],

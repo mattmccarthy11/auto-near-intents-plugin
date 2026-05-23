@@ -12,9 +12,83 @@
       "const": false
     },
     "quoteRequest": {
+      "additionalProperties": true,
+      "properties": {
+        "amount": {
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "confidentiality": {
+          "enum": [
+            "public",
+            "basic",
+            "advanced"
+          ]
+        },
+        "deadline": {
+          "type": "string"
+        },
+        "depositMode": {
+          "enum": [
+            "SIMPLE",
+            "MEMO"
+          ]
+        },
+        "depositType": {
+          "enum": [
+            "ORIGIN_CHAIN",
+            "INTENTS",
+            "CONFIDENTIAL_INTENTS"
+          ]
+        },
+        "destinationAsset": {
+          "type": "string"
+        },
+        "dry": {
+          "const": true
+        },
+        "originAsset": {
+          "type": "string"
+        },
+        "quoteWaitingTimeMs": {
+          "type": "integer"
+        },
+        "recipient": {
+          "type": "string"
+        },
+        "recipientType": {
+          "enum": [
+            "DESTINATION_CHAIN",
+            "INTENTS",
+            "CONFIDENTIAL_INTENTS"
+          ]
+        },
+        "refundTo": {
+          "type": "string"
+        },
+        "refundType": {
+          "enum": [
+            "ORIGIN_CHAIN",
+            "INTENTS",
+            "CONFIDENTIAL_INTENTS"
+          ]
+        },
+        "slippageTolerance": {
+          "type": "integer"
+        },
+        "swapType": {
+          "enum": [
+            "EXACT_INPUT",
+            "EXACT_OUTPUT",
+            "FLEX_INPUT",
+            "ANY_INPUT"
+          ]
+        }
+      },
       "required": [
         "dry",
         "swapType",
+        "slippageTolerance",
         "originAsset",
         "depositType",
         "destinationAsset",
@@ -23,7 +97,8 @@
         "recipientType",
         "refundTo",
         "refundType",
-        "deadline"
+        "deadline",
+        "depositMode"
       ],
       "type": "object"
     },

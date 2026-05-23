@@ -15,8 +15,7 @@
     },
     "refund": {
       "available": true,
-      "refundTo": "auto-research-refund.near",
-      "refundType": "INTENTS",
+      "route_redacted": true,
       "status": "mock_refundable_if_proof_fails"
     },
     "settlement": {

@@ -21,6 +21,24 @@ REQUIRED_FILES = {
     "export_policy": "public-export-policy.json",
 }
 
+SCHEMA_FILES = {
+    "intent": "research-intent.schema.json",
+    "tranche_policy": "compute-tranche-policy.schema.json",
+    "quote_request": "near-quote-request.schema.json",
+    "status_refund_receipt": "mock-near-status-refund-receipt.schema.json",
+    "settlement": "mock-near-settlement.schema.json",
+    "proof_link": "intent-proof-link.schema.json",
+    "export_policy": "public-export-policy.schema.json",
+}
+
+SUPPORTED_SWAP_TYPES = {"EXACT_INPUT", "EXACT_OUTPUT", "FLEX_INPUT", "ANY_INPUT"}
+SUPPORTED_DEPOSIT_TYPES = {"ORIGIN_CHAIN", "INTENTS", "CONFIDENTIAL_INTENTS"}
+SUPPORTED_RECIPIENT_TYPES = {"DESTINATION_CHAIN", "INTENTS", "CONFIDENTIAL_INTENTS"}
+SUPPORTED_REFUND_TYPES = {"ORIGIN_CHAIN", "INTENTS", "CONFIDENTIAL_INTENTS"}
+SUPPORTED_DEPOSIT_MODES = {"SIMPLE", "MEMO"}
+SUPPORTED_CONFIDENTIALITY_MODES = {"public", "basic", "advanced"}
+DRY_STATUS_POLICY = "NO_DEPOSIT_DRY_RUN"
+
 PUBLIC_ARTIFACT_KEYS = ("dashboard", "redacted_proof")
 PRIVATE_VALUE_FIELDS = {
     "private_subject",
@@ -35,6 +53,19 @@ PRIVATE_FIELD_NAMES = PRIVATE_VALUE_FIELDS | {
     "confidential_fields",
     "private_values",
 }
+ROUTE_FIELD_NAMES = {
+    "recipient",
+    "recipientType",
+    "refundTo",
+    "refundType",
+    "depositType",
+    "depositMode",
+    "depositAddress",
+    "depositMemo",
+    "virtualChainRecipient",
+    "virtualChainRefundRecipient",
+    "customRecipientMsg",
+}
 PUBLICATION_AUDIT_SKIP_DIRS = {".git", "__pycache__", ".pytest_cache", ".venv", "dist", "build"}
 PUBLICATION_AUDIT_SKIP_SUFFIXES = {".pyc", ".pyo", ".png", ".jpg", ".jpeg", ".gif", ".pdf"}
 PUBLICATION_RISK_PATTERNS = {
@@ -48,6 +79,106 @@ PUBLICATION_RISK_PATTERNS = {
     "auto_token_private_data_path": re.compile(r"\bauto-token/data/(?:runs|live-approvals|agent-sessions|agent-payments)"),
     "real_s3_uri": re.compile(r"\bs3://"),
 }
+
+
+def json_type_matches(value: Any, expected_type: str) -> bool:
+    if expected_type == "object":
+        return isinstance(value, dict)
+    if expected_type == "array":
+        return isinstance(value, list)
+    if expected_type == "string":
+        return isinstance(value, str)
+    if expected_type == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if expected_type == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected_type == "boolean":
+        return isinstance(value, bool)
+    if expected_type == "null":
+        return value is None
+    return True
+
+
+def validate_json_schema(payload: Any, schema: dict[str, Any], path: str = "$") -> list[str]:
+    issues: list[str] = []
+    if "const" in schema and payload != schema["const"]:
+        issues.append(f"{path}: expected const {schema['const']!r}, got {payload!r}")
+    if "enum" in schema and payload not in schema["enum"]:
+        issues.append(f"{path}: expected one of {schema['enum']!r}, got {payload!r}")
+    expected_type = schema.get("type")
+    if isinstance(expected_type, list):
+        if not any(json_type_matches(payload, item) for item in expected_type):
+            issues.append(f"{path}: expected type {expected_type!r}, got {type(payload).__name__}")
+    elif isinstance(expected_type, str) and not json_type_matches(payload, expected_type):
+        issues.append(f"{path}: expected type {expected_type!r}, got {type(payload).__name__}")
+        return issues
+    if isinstance(payload, dict):
+        required = schema.get("required", [])
+        if isinstance(required, list):
+            for key in required:
+                if key not in payload:
+                    issues.append(f"{path}.{key}: missing required property")
+        properties = schema.get("properties", {})
+        if isinstance(properties, dict):
+            for key, child_schema in properties.items():
+                if key in payload and isinstance(child_schema, dict):
+                    issues.extend(validate_json_schema(payload[key], child_schema, f"{path}.{key}"))
+        if schema.get("additionalProperties") is False and isinstance(properties, dict):
+            allowed = set(properties)
+            for key in payload:
+                if key not in allowed:
+                    issues.append(f"{path}.{key}: additional property is not allowed")
+    if isinstance(payload, list):
+        min_items = schema.get("minItems")
+        if isinstance(min_items, int) and len(payload) < min_items:
+            issues.append(f"{path}: expected at least {min_items} items, got {len(payload)}")
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            for index, item in enumerate(payload):
+                issues.extend(validate_json_schema(item, item_schema, f"{path}[{index}]"))
+    if isinstance(payload, (int, float)) and not isinstance(payload, bool):
+        exclusive_minimum = schema.get("exclusiveMinimum")
+        if isinstance(exclusive_minimum, (int, float)) and payload <= exclusive_minimum:
+            issues.append(f"{path}: expected > {exclusive_minimum}, got {payload}")
+    if isinstance(payload, str) and isinstance(schema.get("pattern"), str):
+        if re.fullmatch(schema["pattern"], payload) is None:
+            issues.append(f"{path}: value does not match pattern {schema['pattern']!r}")
+    return issues
+
+
+def validate_demo_schemas(root: Path, schema_root: Path | None = None) -> dict[str, Any]:
+    root = root.expanduser().resolve()
+    if schema_root is None:
+        candidate = root.parent / "schemas"
+        schema_root = candidate if candidate.is_dir() else Path(__file__).resolve().parents[1] / "schemas"
+    schema_root = schema_root.expanduser().resolve()
+    artifact_results: list[dict[str, Any]] = []
+    issues: list[dict[str, Any]] = []
+    for key, schema_filename in SCHEMA_FILES.items():
+        artifact_path = root / REQUIRED_FILES[key]
+        schema_path = schema_root / schema_filename
+        payload = load_json(artifact_path)
+        schema = load_json(schema_path)
+        schema_issues = validate_json_schema(payload, schema)
+        artifact_results.append(
+            {
+                "artifact": artifact_path.name,
+                "schema": schema_path.name,
+                "ok": not schema_issues,
+                "issue_count": len(schema_issues),
+            }
+        )
+        for issue in schema_issues:
+            issues.append({"artifact": artifact_path.name, "schema": schema_path.name, "issue": issue})
+    return {
+        "schema": "auto-near-intents-schema-validation/v1",
+        "ok": not issues,
+        "root": str(root),
+        "schema_root": str(schema_root),
+        "artifact_count": len(artifact_results),
+        "artifacts": artifact_results,
+        "issues": issues,
+    }
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -135,14 +266,16 @@ def build_quote_request(intent: dict[str, Any], tranche_policy: dict[str, Any]) 
             "swapType": adapter.get("swapType", "EXACT_INPUT"),
             "slippageTolerance": int(adapter.get("slippageTolerance", 100)),
             "originAsset": adapter.get("originAsset", "nep141:wrap.near"),
-            "depositType": adapter.get("depositType", "INTENTS"),
+            "depositType": adapter.get("depositType", "CONFIDENTIAL_INTENTS"),
             "destinationAsset": adapter.get("destinationAsset", "nep141:usdc.near"),
             "amount": str(quote_amount),
             "recipient": adapter.get("recipient", "auto-research-settlement.near"),
-            "recipientType": adapter.get("recipientType", "INTENTS"),
+            "recipientType": adapter.get("recipientType", "CONFIDENTIAL_INTENTS"),
             "refundTo": adapter.get("refundTo", "auto-research-refund.near"),
-            "refundType": adapter.get("refundType", "INTENTS"),
+            "refundType": adapter.get("refundType", "CONFIDENTIAL_INTENTS"),
             "deadline": intent.get("deadline"),
+            "depositMode": adapter.get("depositMode", "SIMPLE"),
+            "confidentiality": adapter.get("confidentiality", "basic"),
             "quoteWaitingTimeMs": int(adapter.get("quoteWaitingTimeMs", 5000)),
         },
         "private_fields_forwarded": [],
@@ -167,16 +300,19 @@ def build_status_refund_receipt(quote_request: dict[str, Any], settlement: dict[
         "mode": "mock",
         "spendful": False,
         "live_near_transaction": False,
+        "status_endpoint_called": False,
         "deposit_submitted": False,
         "depositAddress": None,
         "depositMemo": None,
-        "status": "REFUNDED",
+        "status": DRY_STATUS_POLICY,
+        "near_status": None,
         "refund": {
-            "status": "mock_refundable_if_proof_fails",
+            "policy_status": "mock_refundable_if_proof_fails",
             "refundTo": quote_body.get("refundTo"),
             "refundType": quote_body.get("refundType"),
-            "refundReason": "PROOF_NOT_VERIFIED_IN_DRY_RUN",
-            "refundedAmount": quote_body.get("amount"),
+            "refundPolicyReason": "PROOF_NOT_VERIFIED_IN_DRY_RUN",
+            "refundableAmount": quote_body.get("amount"),
+            "actualRefundedAmount": None,
         },
         "swapDetails": {
             "intentHashes": [],
@@ -184,7 +320,7 @@ def build_status_refund_receipt(quote_request: dict[str, Any], settlement: dict[
             "originChainTxHashes": [],
             "destinationChainTxHashes": [],
         },
-        "rule": "This receipt is a mock status/refund fixture. No deposit address was funded and no status endpoint was called.",
+        "rule": "This receipt is a dry status-policy fixture. No deposit address was funded, no status endpoint was called, and no real NEAR swap status is claimed.",
     }
 
 
@@ -243,6 +379,7 @@ def verify_demo(root: Path) -> dict[str, Any]:
 
     expected_quote_request = build_quote_request(intent, tranche_policy)
     expected_status_refund_receipt = build_status_refund_receipt(quote_request, settlement)
+    schema_validation = validate_demo_schemas(root)
     quote_body = quote_request.get("quoteRequest", {})
     if not isinstance(quote_body, dict):
         quote_body = {}
@@ -250,12 +387,19 @@ def verify_demo(root: Path) -> dict[str, Any]:
     if not isinstance(refund, dict):
         refund = {}
 
-    public_values = [dashboard, redacted_proof, quote_request, status_refund_receipt]
+    public_values = [dashboard, redacted_proof]
     private_values = find_values(intent, PRIVATE_VALUE_FIELDS)
     public_export_keys = sorted(set(find_keys(public_values, PRIVATE_FIELD_NAMES)))
     leaked_values = sorted(
         value
         for value in private_values
+        if any(contains_text(public_artifact, value) for public_artifact in public_values)
+    )
+    route_values = sorted(set(find_values(intent.get("near_1click_adapter", {}), ROUTE_FIELD_NAMES) + find_values(quote_body, ROUTE_FIELD_NAMES)))
+    public_route_keys = sorted(set(find_keys(public_values, ROUTE_FIELD_NAMES)))
+    leaked_route_values = sorted(
+        value
+        for value in route_values
         if any(contains_text(public_artifact, value) for public_artifact in public_values)
     )
     denied_field_names = set(export_policy.get("denied_public_field_names", []))
@@ -302,9 +446,12 @@ def verify_demo(root: Path) -> dict[str, Any]:
             and quote_request.get("spendful") is False
             and quote_request.get("live_near_transaction") is False
             and quote_body.get("dry") is True
-            and quote_body.get("swapType") in {"EXACT_INPUT", "EXACT_OUTPUT"}
-            and quote_body.get("recipientType") in {"INTENTS", "DESTINATION_CHAIN"}
-            and quote_body.get("refundType") in {"INTENTS", "ORIGIN_CHAIN"}
+            and quote_body.get("swapType") in SUPPORTED_SWAP_TYPES
+            and quote_body.get("depositType") in SUPPORTED_DEPOSIT_TYPES
+            and quote_body.get("recipientType") in SUPPORTED_RECIPIENT_TYPES
+            and quote_body.get("refundType") in SUPPORTED_REFUND_TYPES
+            and quote_body.get("depositMode") in SUPPORTED_DEPOSIT_MODES
+            and quote_body.get("confidentiality") in SUPPORTED_CONFIDENTIALITY_MODES
             and bool(quote_body.get("originAsset"))
             and bool(quote_body.get("destinationAsset"))
             and bool(quote_body.get("amount")),
@@ -313,12 +460,33 @@ def verify_demo(root: Path) -> dict[str, Any]:
                 "compute_tranche_policy_id": quote_request.get("compute_tranche_policy_id"),
                 "dry": quote_request.get("dry"),
                 "quote_dry": quote_body.get("dry"),
+                "swapType": quote_body.get("swapType"),
+                "depositType": quote_body.get("depositType"),
+                "depositMode": quote_body.get("depositMode"),
+                "recipientType": quote_body.get("recipientType"),
+                "refundType": quote_body.get("refundType"),
                 "endpoint": quote_request.get("endpoint"),
             },
             "near-quote-request.json must be a derived 1Click dry quote request with no spend/live transaction",
         ),
         check(
-            "mock_status_refund_receipt_blocks_live_deposit",
+            "near_1click_quote_enums_cover_current_docs",
+            {"FLEX_INPUT", "ANY_INPUT"}.issubset(SUPPORTED_SWAP_TYPES)
+            and "CONFIDENTIAL_INTENTS" in SUPPORTED_DEPOSIT_TYPES
+            and "CONFIDENTIAL_INTENTS" in SUPPORTED_RECIPIENT_TYPES
+            and "CONFIDENTIAL_INTENTS" in SUPPORTED_REFUND_TYPES
+            and {"SIMPLE", "MEMO"}.issubset(SUPPORTED_DEPOSIT_MODES),
+            {
+                "supported_swap_types": sorted(SUPPORTED_SWAP_TYPES),
+                "supported_deposit_types": sorted(SUPPORTED_DEPOSIT_TYPES),
+                "supported_recipient_types": sorted(SUPPORTED_RECIPIENT_TYPES),
+                "supported_refund_types": sorted(SUPPORTED_REFUND_TYPES),
+                "supported_deposit_modes": sorted(SUPPORTED_DEPOSIT_MODES),
+            },
+            "1Click quote model must cover current documented enums including FLEX_INPUT, ANY_INPUT, CONFIDENTIAL_INTENTS, and depositMode",
+        ),
+        check(
+            "mock_status_refund_receipt_is_dry_policy_not_real_swap",
             status_refund_receipt.get("schema") == "auto-near-1click-status-refund-receipt/v1"
             and status_refund_receipt == expected_status_refund_receipt
             and status_refund_receipt.get("intent_id") == intent_id
@@ -326,19 +494,27 @@ def verify_demo(root: Path) -> dict[str, Any]:
             and status_refund_receipt.get("mode") == "mock"
             and status_refund_receipt.get("spendful") is False
             and status_refund_receipt.get("live_near_transaction") is False
+            and status_refund_receipt.get("status_endpoint_called") is False
             and status_refund_receipt.get("deposit_submitted") is False
             and status_refund_receipt.get("depositAddress") is None
-            and status_refund_receipt.get("status") == "REFUNDED"
+            and status_refund_receipt.get("depositMemo") is None
+            and status_refund_receipt.get("status") == DRY_STATUS_POLICY
+            and status_refund_receipt.get("near_status") is None
+            and "refundedAmount" not in refund
             and refund.get("refundTo") == quote_body.get("refundTo")
-            and refund.get("refundType") == quote_body.get("refundType"),
+            and refund.get("refundType") == quote_body.get("refundType")
+            and refund.get("policy_status") == "mock_refundable_if_proof_fails"
+            and refund.get("actualRefundedAmount") is None,
             {
                 "intent_id": status_refund_receipt.get("intent_id"),
                 "settlement_id": status_refund_receipt.get("settlement_id"),
                 "status": status_refund_receipt.get("status"),
+                "near_status": status_refund_receipt.get("near_status"),
+                "status_endpoint_called": status_refund_receipt.get("status_endpoint_called"),
                 "deposit_submitted": status_refund_receipt.get("deposit_submitted"),
                 "refund": refund,
             },
-            "mock status/refund receipt must keep deposits disabled and bind refund metadata to the quote request",
+            "mock status/refund receipt must model dry refund policy without claiming a real NEAR status or refund",
         ),
         check(
             "mock_near_settlement_no_live_transaction",
@@ -397,6 +573,27 @@ def verify_demo(root: Path) -> dict[str, Any]:
             "public proof/dashboard exports must not leak private intent fields or values",
         ),
         check(
+            "public_export_has_no_route_metadata_leaks",
+            ROUTE_FIELD_NAMES.issubset(denied_field_names)
+            and not public_route_keys
+            and not leaked_route_values,
+            {
+                "denied_route_field_count": len(ROUTE_FIELD_NAMES & denied_field_names),
+                "public_route_field_keys": public_route_keys,
+                "leaked_route_values": leaked_route_values,
+            },
+            "public proof/dashboard exports must not expose recipient, refund, deposit, or settlement route metadata",
+        ),
+        check(
+            "schemas_validate_artifacts",
+            schema_validation.get("ok") is True,
+            {
+                "artifact_count": schema_validation.get("artifact_count"),
+                "issues": schema_validation.get("issues", []),
+            },
+            "example artifacts must validate against their JSON schemas",
+        ),
+        check(
             "final_payout_blocked_until_proof_verified",
             settlement.get("final_payout", {}).get("status") == "blocked_until_proof_verified"
             and settlement.get("final_payout", {}).get("live_release_enabled") is False
@@ -426,7 +623,7 @@ def verify_demo(root: Path) -> dict[str, Any]:
             "status_refund_receipt_id": status_refund_receipt.get("status_refund_receipt_id"),
             "proof_ledger_row_id": proof_row_id,
             "dashboard_section": "near_confidential_research_intent",
-            "public_export_redacted": not leaked_values and not public_export_keys,
+            "public_export_redacted": not leaked_values and not public_export_keys and not public_route_keys and not leaked_route_values,
             "no_live_spend": True,
         },
     }
